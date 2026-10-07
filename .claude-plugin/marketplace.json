@@ -1,0 +1,14 @@
+{
+  "name": "pix",
+  "description": "Skill pix: QR code Pix estático",
+  "owner": {
+    "name": "jgcmarins"
+  },
+  "plugins": [
+    {
+      "name": "pix",
+      "source": "./",
+      "description": "Gera QR code Pix estático (PNG + copia e cola) para qualquer chave."
+    }
+  ]
+}
