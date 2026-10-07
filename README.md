@@ -19,29 +19,31 @@ Você pede um QR code Pix, o Claude pergunta os dados e devolve a imagem e o có
 
 ## Instalação
 
-### Claude web (claude.ai)
+### Claude web e app desktop (claude.ai)
 
 1. Ative a execução de código em **Settings > Capabilities** ("Code execution and file creation").
-2. Baixe o `pix.zip` da [página de releases](https://github.com/jgcmarins/skill-pix/releases) ou gere o zip da pasta `skills/pix`.
-3. Em **Customize > Skills**, clique em "+" > "Create skill" > "Upload a skill" e suba o zip.
-4. Ative a skill e peça: "gera um QR code pix". No Claude web não existe comando com "/" para skills; o Claude usa a skill pelo pedido.
+2. Em **Customize > Plugins**, clique em **Add > Add marketplace** e cole `jgcmarins/skill-pix`.
+3. Instale o plugin **pix** e peça: "gera um QR code pix".
+
+Alternativa: baixe o `pix.zip` da [página de releases](https://github.com/jgcmarins/skill-pix/releases) e suba em **Customize > Skills** > "+" > "Upload a skill".
 
 ### Claude Code
 
-Dentro de uma sessão do Claude Code:
+Dentro de uma sessão:
 
 ```
-/plugin install pix --marketplace jgcmarins/skill-pix
+/plugin marketplace add jgcmarins/skill-pix
+/plugin install pix@skill-pix
 ```
 
 Ou pelo terminal:
 
 ```bash
 claude plugin marketplace add jgcmarins/skill-pix
-claude plugin install pix@pix
+claude plugin install pix@skill-pix
 ```
 
-Depois, numa sessão, digite `/pix`.
+Depois, numa sessão, digite `/pix` ou peça "gera um QR code pix".
 
 ## Uso direto do script
 

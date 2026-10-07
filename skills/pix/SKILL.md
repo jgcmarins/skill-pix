@@ -24,23 +24,26 @@ Telefone precisa ter DDI e DDD. Se o usuário passar só `48999999999`, isso tem
 
 ## Passo 2: gerar
 
-Instale a dependência se precisar:
+O script fica em `scripts/pix.py`, dentro da pasta desta skill. No Claude Code o caminho é `${CLAUDE_SKILL_DIR}/scripts/pix.py`. Se esse texto aparecer sem ser substituído (Claude web), use o caminho absoluto da pasta onde está este SKILL.md.
+
+Confira a dependência e instale só se faltar:
 
 ```bash
-pip install "qrcode[pil]" --break-system-packages
+python3 -c "import qrcode" 2>/dev/null || pip install "qrcode[pil]" || pip install "qrcode[pil]" --break-system-packages
 ```
 
-Rode o script desta skill (`scripts/pix.py`, no mesmo diretório deste arquivo):
+Rode:
 
 ```bash
-python3 scripts/pix.py --chave "CHAVE" --nome "NOME" --cidade "CIDADE" \
+python3 "${CLAUDE_SKILL_DIR}/scripts/pix.py" --chave "CHAVE" --nome "NOME" --cidade "CIDADE" \
   [--valor 150.00] [--txid PEDIDO123] [--descricao "texto"] --saida pix.png
 ```
 
-- A saída padrão (stdout) é o código copia e cola.
-- Se der erro, o script imprime `ERRO: ...` e sai com código 1. Explique o erro ao usuário e peça o dado corrigido.
+- Salve a imagem onde o usuário consiga abrir: no Claude web, em `/mnt/user-data/outputs/pix.png`; no Claude Code, no diretório atual.
+- A saída padrão (stdout) é o código copia e cola. Ele sai mesmo se a geração da imagem falhar.
+- Se der erro, o script imprime `ERRO: ...` e sai com código diferente de 0. Explique o erro ao usuário e peça o dado corrigido.
 
-O script já trata sozinho: remoção de acentos, limite de 25 caracteres no nome e 15 na cidade, formato do valor (aceita vírgula), limpeza do CPF/CNPJ formatado e cálculo do CRC16.
+O script já trata sozinho: remoção de acentos, limite de 25 caracteres no nome e 15 na cidade, formato do valor (aceita `150`, `150,00`, `1.234,56`, `R$ 10`), limpeza do CPF/CNPJ formatado, validação dos dígitos de CPF/CNPJ e cálculo do CRC16.
 
 ## Passo 3: entregar
 

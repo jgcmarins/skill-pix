@@ -7,6 +7,7 @@ Uso:
 """
 import argparse
 import re
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import sys
 import unicodedata
 
@@ -15,20 +16,83 @@ def limpar(texto: str, limite: int) -> str:
     """Remove acentos e caracteres fora do padrão, corta no limite."""
     t = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
     t = re.sub(r"[^A-Za-z0-9 .,\-/@+]", "", t).strip()
-    return t[:limite]
+    return t[:limite].strip()
+
+
+def cpf_valido(d: str) -> bool:
+    if len(d) != 11 or d == d[0] * 11:
+        return False
+    for n in (9, 10):
+        soma = sum(int(d[i]) * (n + 1 - i) for i in range(n))
+        if (soma * 10) % 11 % 10 != int(d[n]):
+            return False
+    return True
+
+
+def cnpj_valido(d: str) -> bool:
+    if len(d) != 14 or d == d[0] * 14:
+        return False
+    for n in (12, 13):
+        pesos = list(range(n - 7, 1, -1)) + list(range(9, 1, -1))
+        soma = sum(int(d[i]) * pesos[i] for i in range(n))
+        dv = 11 - soma % 11
+        if (0 if dv >= 10 else dv) != int(d[n]):
+            return False
+    return True
+
+
+def normalizar_valor(valor) -> str:
+    """Aceita 150, 150.00, 150,00, 1.234,56, 1,234.56 e R$ 10. Devolve '150.00'."""
+    if "-" in str(valor):
+        raise ValueError("Valor deve ser maior que zero.")
+    v = re.sub(r"[^\d.,]", "", str(valor))
+    if "," in v and "." in v:
+        # o último separador é o decimal
+        if v.rfind(",") > v.rfind("."):
+            v = v.replace(".", "").replace(",", ".")
+        else:
+            v = v.replace(",", "")
+    elif "," in v:
+        v = v.replace(",", ".")
+    elif v.count(".") > 1:
+        v = v.replace(".", "")  # 1.234.567
+    try:
+        d = Decimal(v).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except InvalidOperation:
+        raise ValueError(f"Valor inválido: {valor!r}. Use, por exemplo, 150.00 ou 150,00.")
+    if d <= 0:
+        raise ValueError("Valor deve ser maior que zero.")
+    texto = f"{d:.2f}"
+    if len(texto) > 13:
+        raise ValueError("Valor grande demais.")
+    return texto
 
 
 def normalizar_chave(chave: str) -> str:
     c = chave.strip()
     if "@" in c:  # e-mail
+        if not c.isascii() or " " in c:
+            raise ValueError(f"E-mail inválido: {chave!r}.")
         return c.lower()
     if re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", c):
         return c.lower()  # chave aleatória
     digitos = re.sub(r"\D", "", c)
     if c.startswith("+"):
+        if not (digitos.startswith("55") and len(digitos) in (12, 13)):
+            raise ValueError(
+                f"Telefone inválido: {chave!r}. Use DDI 55 + DDD + número, ex.: +5548999999999."
+            )
         return "+" + digitos  # telefone já com DDI
-    if len(digitos) in (11, 14):
-        return digitos  # CPF ou CNPJ (telefone precisa vir com +55)
+    if len(digitos) == 11:
+        if not cpf_valido(digitos):
+            raise ValueError(
+                f"CPF inválido: {chave!r}. Se for telefone, use o formato +55{digitos}."
+            )
+        return digitos  # CPF (telefone precisa vir com +55)
+    if len(digitos) == 14:
+        if not cnpj_valido(digitos):
+            raise ValueError(f"CNPJ inválido: {chave!r}. Confira os dígitos.")
+        return digitos
     if len(digitos) in (12, 13) and digitos.startswith("55"):
         return "+" + digitos  # telefone com 55 sem o +
     raise ValueError(
@@ -72,10 +136,7 @@ def gerar_payload(chave, nome, cidade, valor=None, txid=None, descricao=None) ->
     p += campo("52", "0000")
     p += campo("53", "986")
     if valor is not None:
-        v = float(str(valor).replace(",", "."))
-        if v <= 0:
-            raise ValueError("Valor deve ser maior que zero.")
-        p += campo("54", f"{v:.2f}")
+        p += campo("54", normalizar_valor(valor))
     p += campo("58", "BR")
     p += campo("59", nome)
     p += campo("60", cidade)
@@ -102,10 +163,14 @@ def main():
         print(f"ERRO: {e}", file=sys.stderr)
         sys.exit(1)
 
-    import qrcode  # pip install "qrcode[pil]"
+    print(payload)
+    try:
+        import qrcode  # pip install "qrcode[pil]"
+    except ImportError:
+        print('ERRO: falta a biblioteca qrcode. Rode: pip install "qrcode[pil]"', file=sys.stderr)
+        sys.exit(2)
     img = qrcode.make(payload, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10, border=4)
     img.save(a.saida)
-    print(payload)
     print(f"QR salvo em: {a.saida}", file=sys.stderr)
 
 
