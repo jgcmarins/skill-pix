@@ -29,7 +29,7 @@ O script fica em `scripts/pix.py`, dentro da pasta desta skill. No Claude Code o
 Confira a dependência e instale só se faltar:
 
 ```bash
-python3 -c "import qrcode" 2>/dev/null || pip install "qrcode[pil]" || pip install "qrcode[pil]" --break-system-packages
+python3 -c "import qrcode" 2>/dev/null || pip install "qrcode[pil]==8.2" || pip install "qrcode[pil]==8.2" --break-system-packages
 ```
 
 Rode:

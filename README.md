@@ -50,12 +50,20 @@ Depois, numa sessão, digite `/pix` ou peça "gera um QR code pix".
 O script também funciona sozinho:
 
 ```bash
-pip install "qrcode[pil]"
+pip install "qrcode[pil]==8.2"
 python3 skills/pix/scripts/pix.py --chave "email@exemplo.com" --nome "Maria Silva" \
   --cidade "Sao Paulo" --valor 25.00 --saida pix.png
 ```
 
 O código copia e cola sai no terminal e a imagem é salva em `pix.png`.
+
+## Dados e privacidade
+
+- Tudo roda localmente, no ambiente de execução de código do Claude ou na sua máquina. O script **não envia nenhum dado** para servidor algum: não chama API, não tem telemetria e não guarda nada além da imagem que você pedir.
+- A única conexão de rede é a instalação da biblioteca [`qrcode`](https://pypi.org/project/qrcode/) (versão fixa `8.2`) pelo PyPI, e só quando ela ainda não está instalada.
+- Os dados que você informa (chave, nome, cidade, valor) ficam na conversa com o Claude, como qualquer mensagem.
+
+Detalhes em [PRIVACY.md](PRIVACY.md).
 
 ## Avisos
 

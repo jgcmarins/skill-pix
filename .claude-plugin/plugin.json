@@ -1,11 +1,23 @@
 {
   "name": "pix",
   "displayName": "Pix QR Code",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Gera QR code Pix estático (PNG + copia e cola) para qualquer chave, no padrão BR Code do Banco Central.",
-  "author": { "name": "jgcmarins" },
+  "author": {
+    "name": "jgcmarins"
+  },
   "homepage": "https://github.com/jgcmarins/skill-pix",
   "repository": "https://github.com/jgcmarins/skill-pix",
   "license": "MIT",
-  "keywords": ["pix", "qrcode", "brcode", "brasil", "pagamento"]
+  "keywords": [
+    "pix",
+    "qrcode",
+    "brcode",
+    "brasil",
+    "pagamento"
+  ],
+  "icon": "./icon.png",
+  "documentationUrl": "https://github.com/jgcmarins/skill-pix#readme",
+  "supportUrl": "https://github.com/jgcmarins/skill-pix/issues",
+  "privacyPolicyUrl": "https://github.com/jgcmarins/skill-pix/blob/main/PRIVACY.md"
 }

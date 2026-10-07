@@ -165,9 +165,9 @@ def main():
 
     print(payload)
     try:
-        import qrcode  # pip install "qrcode[pil]"
+        import qrcode  # pip install "qrcode[pil]==8.2"
     except ImportError:
-        print('ERRO: falta a biblioteca qrcode. Rode: pip install "qrcode[pil]"', file=sys.stderr)
+        print('ERRO: falta a biblioteca qrcode. Rode: pip install "qrcode[pil]==8.2"', file=sys.stderr)
         sys.exit(2)
     img = qrcode.make(payload, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10, border=4)
     img.save(a.saida)
