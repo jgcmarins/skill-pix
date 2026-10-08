@@ -2,14 +2,26 @@
 """Gera BR Code Pix estático (copia e cola) e imagem PNG do QR code.
 
 Uso:
-  python pix.py --chave CHAVE --nome NOME --cidade CIDADE [--valor 10.50]
-                [--txid ID] [--descricao TEXTO] [--saida pix.png]
+  python pix.py CHAVE [VALOR]                  # chave e valor em qualquer ordem
+  python pix.py --chave CHAVE [--valor 10.50] [--nome NOME] [--cidade CIDADE]
+                [--txid ID] [--descricao TEXTO] [--terminal escuro|claro]
+                [--saida pix.png]
 """
 import argparse
 import re
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import sys
 import unicodedata
+
+# Nome e cidade são obrigatórios no BR Code, mas o app do banco mostra o nome
+# do cadastro da chave no Banco Central (DICT). Testado em vários bancos.
+NOME_PADRAO = "PIX"
+CIDADE_PADRAO = "BRASIL"
+
+SKILL_NOME = "pix"
+SKILL_LINK = "github.com/jgcmarins/skill-pix"
+
+EVP = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
 
 def limpar(texto: str, limite: int) -> str:
@@ -74,7 +86,7 @@ def normalizar_chave(chave: str) -> str:
         if not c.isascii() or " " in c:
             raise ValueError(f"E-mail inválido: {chave!r}.")
         return c.lower()
-    if re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", c):
+    if EVP.fullmatch(c):
         return c.lower()  # chave aleatória
     digitos = re.sub(r"\D", "", c)
     if c.startswith("+"):
@@ -101,6 +113,75 @@ def normalizar_chave(chave: str) -> str:
     )
 
 
+def parece_valor(token: str) -> bool:
+    """Diz se um pedaço da entrada livre é o valor (e não a chave)."""
+    t = token.strip()
+    if t.upper().startswith("R$"):
+        return True
+    if not re.fullmatch(r"[\d.,]+", t):
+        return False  # e-mail, telefone com +, chave aleatória, CPF/CNPJ com - ou /
+    if t.isdigit() and len(t) in (11, 14):
+        return False  # CPF ou CNPJ sem formatação
+    if t.isdigit() and len(t) in (12, 13) and t.startswith("55"):
+        return False  # telefone com 55 sem o +
+    return True
+
+
+def separar_entrada(tokens) -> tuple:
+    """Separa chave e valor de uma entrada livre, em qualquer ordem.
+
+    Ex.: ["pix@exemplo.com", "100,00"], ["R$", "100", "+55", "48", "99999-9999"].
+    """
+    texto = " ".join(tokens)
+    texto = re.sub(r"(?i)\b(reais|real)\b", "", texto)
+    texto = re.sub(r"(?i)R\$\s+", "R$", texto)
+    # junta telefone digitado com espaços: +55 48 99999-9999
+    texto = re.sub(r"\+[\d\s()\-]+\d", lambda m: re.sub(r"[\s()\-]", "", m.group()), texto)
+
+    chave = valor = None
+    for t in texto.split():
+        if parece_valor(t):
+            if valor is not None:
+                raise ValueError(f"Mais de um valor na entrada: {valor!r} e {t!r}.")
+            valor = t
+        else:
+            if chave is not None:
+                raise ValueError(f"Mais de uma chave na entrada: {chave!r} e {t!r}.")
+            chave = t
+    if chave is None:
+        raise ValueError("Falta a chave Pix.")
+    return chave, valor
+
+
+def valor_br(valor: str) -> str:
+    """'1234.50' -> '1.234,50'."""
+    inteiro, centavos = valor.split(".")
+    return f"{int(inteiro):,}".replace(",", ".") + "," + centavos
+
+
+def chave_legivel(chave: str) -> str:
+    """Formata CPF, CNPJ e telefone para exibição. Outras chaves ficam iguais."""
+    if chave.startswith("+55") and len(chave) in (13, 14):
+        ddd, num = chave[3:5], chave[5:]
+        return f"+55 ({ddd}) {num[:-4]}-{num[-4:]}"
+    if chave.isdigit() and len(chave) == 11:
+        return f"{chave[:3]}.{chave[3:6]}.{chave[6:9]}-{chave[9:]}"
+    if chave.isdigit() and len(chave) == 14:
+        return f"{chave[:2]}.{chave[2:5]}.{chave[5:8]}/{chave[8:12]}-{chave[12:]}"
+    return chave
+
+
+def legenda(chave: str, valor) -> str:
+    texto = f"Pix para {chave_legivel(chave)}"
+    if valor is not None:
+        texto += f" no valor de R$ {valor_br(valor)}"
+    return texto
+
+
+def rodape() -> str:
+    return f"Pix gerado utilizando a skill {SKILL_NOME} ({SKILL_LINK})"
+
+
 def campo(id_: str, valor: str) -> str:
     if len(valor) > 99:
         raise ValueError(f"Campo {id_} passa de 99 caracteres.")
@@ -117,12 +198,10 @@ def crc16(payload: str) -> str:
     return f"{crc:04X}"
 
 
-def gerar_payload(chave, nome, cidade, valor=None, txid=None, descricao=None) -> str:
+def gerar_payload(chave, nome=None, cidade=None, valor=None, txid=None, descricao=None) -> str:
     chave = normalizar_chave(chave)
-    nome = limpar(nome, 25)
-    cidade = limpar(cidade, 15)
-    if not nome or not cidade:
-        raise ValueError("Nome e cidade são obrigatórios.")
+    nome = limpar(nome or "", 25) or NOME_PADRAO
+    cidade = limpar(cidade or "", 15) or CIDADE_PADRAO
 
     conta = campo("00", "br.gov.bcb.pix") + campo("01", chave)
     if descricao:
@@ -173,12 +252,80 @@ def qr_texto(qr, tema: str = "escuro", borda: int = 2) -> str:
     return "\n".join(linhas)
 
 
+def _fonte(tamanho: int):
+    from PIL import ImageFont
+    try:
+        return ImageFont.load_default(size=tamanho)  # Pillow >= 10.1
+    except TypeError:
+        return ImageFont.load_default()
+
+
+def _encaixar(draw, opcoes, largura, tamanhos):
+    """Escolhe o maior tamanho de fonte em que alguma opção de quebra de linha cabe."""
+    for tamanho in tamanhos:
+        fonte = _fonte(tamanho)
+        for linhas in opcoes:
+            if all(draw.textlength(l, font=fonte) <= largura for l in linhas):
+                return linhas, fonte
+    return opcoes[-1], _fonte(tamanhos[-1])
+
+
+def gerar_imagem(payload: str, chave: str, valor, saida: str) -> None:
+    """Salva o QR com a legenda embaixo: para quem é o Pix, o valor e o rodapé da skill."""
+    import qrcode
+    from PIL import Image, ImageDraw
+
+    qr = qrcode.make(payload, error_correction=qrcode.constants.ERROR_CORRECT_M,
+                     box_size=10, border=4).get_image().convert("RGB")
+    largura = max(qr.width, 640)
+    margem = 32
+    util = largura - 2 * margem
+    rascunho = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+
+    principal = legenda(chave, valor)
+    opcoes = [[principal]]
+    if valor is not None:
+        opcoes.append([f"Pix para {chave_legivel(chave)}", f"no valor de R$ {valor_br(valor)}"])
+    linhas_p, fonte_p = _encaixar(rascunho, opcoes, util, range(30, 13, -2))
+    linhas_r, fonte_r = _encaixar(
+        rascunho,
+        [[rodape()], [f"Pix gerado utilizando a skill {SKILL_NOME}", SKILL_LINK]],
+        util, range(18, 11, -1),
+    )
+
+    def altura(fonte):
+        caixa = fonte.getbbox("Ag")
+        return caixa[3] - caixa[1]
+
+    esp = 10
+    alt_p = len(linhas_p) * (altura(fonte_p) + esp)
+    alt_r = len(linhas_r) * (altura(fonte_r) + esp)
+    altura_total = qr.height + alt_p + 16 + alt_r + margem
+    img = Image.new("RGB", (largura, altura_total), "white")
+    img.paste(qr, ((largura - qr.width) // 2, 0))
+    d = ImageDraw.Draw(img)
+
+    y = qr.height
+    for linha, fonte, cor in [(l, fonte_p, (17, 17, 17)) for l in linhas_p] + \
+                             [(None, None, None)] + \
+                             [(l, fonte_r, (110, 110, 110)) for l in linhas_r]:
+        if linha is None:
+            y += 16
+            continue
+        w = d.textlength(linha, font=fonte)
+        d.text(((largura - w) / 2, y), linha, font=fonte, fill=cor)
+        y += altura(fonte) + esp
+    img.save(saida)
+
+
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--chave", required=True)
-    ap.add_argument("--nome", required=True)
-    ap.add_argument("--cidade", required=True)
+    ap = argparse.ArgumentParser(description="Gera QR code Pix estático.")
+    ap.add_argument("entrada", nargs="*",
+                    help="chave e valor em qualquer ordem, ex.: pix@exemplo.com 100,00")
+    ap.add_argument("--chave")
     ap.add_argument("--valor")
+    ap.add_argument("--nome", help=f"opcional; padrão {NOME_PADRAO}")
+    ap.add_argument("--cidade", help=f"opcional; padrão {CIDADE_PADRAO}")
     ap.add_argument("--txid")
     ap.add_argument("--descricao")
     ap.add_argument("--saida", default="pix.png")
@@ -187,7 +334,20 @@ def main():
     a = ap.parse_args()
 
     try:
-        payload = gerar_payload(a.chave, a.nome, a.cidade, a.valor, a.txid, a.descricao)
+        chave, valor = a.chave, a.valor
+        if a.entrada:
+            chave_e, valor_e = separar_entrada(a.entrada) if a.chave is None else (None, None)
+            if a.chave is not None:
+                # chave já veio por flag: a entrada livre só pode ser o valor
+                valor_e = " ".join(a.entrada)
+            chave = chave or chave_e
+            if valor is None:
+                valor = valor_e
+        if not chave:
+            raise ValueError("Falta a chave Pix.")
+        payload = gerar_payload(chave, a.nome, a.cidade, valor, a.txid, a.descricao)
+        chave_n = normalizar_chave(chave)
+        valor_n = normalizar_valor(valor) if valor is not None else None
     except ValueError as e:
         print(f"ERRO: {e}", file=sys.stderr)
         sys.exit(1)
@@ -206,9 +366,11 @@ def main():
         print()
         print(qr_texto(qr, a.terminal))
 
-    img = qrcode.make(payload, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10, border=4)
-    img.save(a.saida)
+    gerar_imagem(payload, chave_n, valor_n, a.saida)
+    print(f"Legenda: {legenda(chave_n, valor_n)}", file=sys.stderr)
+    print(f"Rodapé: {rodape()}", file=sys.stderr)
     print(f"QR salvo em: {a.saida}", file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()
