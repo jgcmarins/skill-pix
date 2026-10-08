@@ -209,5 +209,12 @@ class TestCli(unittest.TestCase):
                 self.assertEqual(ler_qr(texto_para_imagem(linhas, tema)), payload)
 
 
+class TestSkillMd(unittest.TestCase):
+    def test_um_unico_marcador_de_argumentos(self):
+        # O Claude Code substitui todas as ocorrências; uma segunda vira texto sem sentido.
+        with open(os.path.join(SCRIPTS, "..", "SKILL.md"), encoding="utf-8") as f:
+            self.assertEqual(f.read().count("$ARGUMENTS"), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

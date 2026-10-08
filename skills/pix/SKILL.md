@@ -11,7 +11,7 @@ Gera um BR Code Pix estático no padrão do Banco Central. Funciona com chave ca
 
 Argumentos do comando: `$ARGUMENTS`
 
-Se a linha acima estiver vazia ou mostrar o texto `$ARGUMENTS` sem substituição (Claude web ou app desktop), use a mensagem do usuário.
+Se a linha acima estiver vazia, ou ainda mostrar o marcador de argumentos (um cifrão seguido da palavra ARGUMENTS) porque não houve substituição (Claude web ou app desktop), use a mensagem do usuário.
 
 Só a **chave Pix** é obrigatória. O **valor** é opcional: sem valor, quem paga digita na hora. Chave e valor podem vir em qualquer ordem (`/pix pix@exemplo.com 100,00` ou `/pix 100,00 pix@exemplo.com`).
 

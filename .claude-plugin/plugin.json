@@ -1,7 +1,7 @@
 {
   "name": "pix",
   "displayName": "Pix QR Code",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Gera QR code Pix estático (PNG + copia e cola) para qualquer chave, no padrão BR Code do Banco Central.",
   "author": {
     "name": "jgcmarins"
