@@ -146,6 +146,33 @@ def gerar_payload(chave, nome, cidade, valor=None, txid=None, descricao=None) ->
     return p + crc16(p)
 
 
+def qr_texto(qr, tema: str = "escuro", borda: int = 2) -> str:
+    """Desenha o QR com meios-blocos Unicode, dois módulos por linha (como o Expo).
+
+    No tema escuro o fundo do terminal é escuro, então os módulos claros do QR
+    (incluindo a margem) são desenhados como blocos cheios.
+    """
+    m = qr.get_matrix()  # já inclui a borda do QRCode (border=0 aqui)
+    n = len(m)
+    tamanho = n + 2 * borda
+
+    def claro(y, x):
+        y, x = y - borda, x - borda
+        escuro = 0 <= y < n and 0 <= x < n and m[y][x]
+        return not escuro
+
+    preenchido = claro if tema == "escuro" else (lambda y, x: not claro(y, x))
+    linhas = []
+    for y in range(0, tamanho, 2):
+        linha = ""
+        for x in range(tamanho):
+            cima = preenchido(y, x)
+            baixo = preenchido(y + 1, x) if y + 1 < tamanho else tema == "escuro"
+            linha += "█" if cima and baixo else "▀" if cima else "▄" if baixo else " "
+        linhas.append(linha)
+    return "\n".join(linhas)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--chave", required=True)
@@ -155,6 +182,8 @@ def main():
     ap.add_argument("--txid")
     ap.add_argument("--descricao")
     ap.add_argument("--saida", default="pix.png")
+    ap.add_argument("--terminal", choices=["escuro", "claro"],
+                    help="também desenha o QR em texto, para terminal com fundo escuro ou claro")
     a = ap.parse_args()
 
     try:
@@ -167,12 +196,19 @@ def main():
     try:
         import qrcode  # pip install "qrcode[pil]==8.2"
     except ImportError:
-        print('ERRO: falta a biblioteca qrcode. Rode: pip install "qrcode[pil]==8.2"', file=sys.stderr)
+        print('ERRO: falta a biblioteca qrcode. Rode: python3 -m pip install "qrcode[pil]==8.2"', file=sys.stderr)
         sys.exit(2)
+
+    if a.terminal:
+        qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=0)
+        qr.add_data(payload)
+        qr.make(fit=True)
+        print()
+        print(qr_texto(qr, a.terminal))
+
     img = qrcode.make(payload, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=10, border=4)
     img.save(a.saida)
     print(f"QR salvo em: {a.saida}", file=sys.stderr)
-
 
 if __name__ == "__main__":
     main()

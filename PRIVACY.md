@@ -14,7 +14,7 @@ A chave Pix, o nome, a cidade, o valor, o identificador e a descrição que voc�
 
 ## Conexões de rede
 
-O script não faz nenhuma requisição de rede. A única conexão possível é a instalação da biblioteca `qrcode` (versão 8.2) pelo PyPI, feita pelo `pip` quando ela ainda não está instalada. Nenhum dado seu é enviado nessa instalação.
+O script não faz nenhuma requisição de rede. A única conexão possível é a instalação da biblioteca `qrcode` (versão 8.2) pelo PyPI, feita pelo `pip` quando ela ainda não está instalada, num ambiente isolado em `~/.cache/skill-pix/venv`. Nenhum dado seu é enviado nessa instalação.
 
 ## Dados na conversa
 

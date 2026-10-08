@@ -24,23 +24,24 @@ Telefone precisa ter DDI e DDD. Se o usuário passar só `48999999999`, isso tem
 
 ## Passo 2: gerar
 
-O script fica em `scripts/pix.py`, dentro da pasta desta skill. No Claude Code o caminho é `${CLAUDE_SKILL_DIR}/scripts/pix.py`. Se esse texto aparecer sem ser substituído (Claude web), use o caminho absoluto da pasta onde está este SKILL.md.
+Os scripts ficam em `scripts/`, dentro da pasta desta skill. No Claude Code o caminho é `${CLAUDE_SKILL_DIR}/scripts/run.sh`. Se esse texto aparecer sem ser substituído (Claude web ou app desktop), use o caminho absoluto da pasta onde está este SKILL.md.
 
-Confira a dependência e instale só se faltar:
-
-```bash
-python3 -c "import qrcode" 2>/dev/null || pip install "qrcode[pil]==8.2" || pip install "qrcode[pil]==8.2" --break-system-packages
-```
-
-Rode:
+Rode sempre pelo `run.sh`. Ele instala a biblioteca `qrcode` na primeira vez, num ambiente isolado, sem mexer no Python do sistema:
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/pix.py" --chave "CHAVE" --nome "NOME" --cidade "CIDADE" \
-  [--valor 150.00] [--txid PEDIDO123] [--descricao "texto"] --saida pix.png
+bash "${CLAUDE_SKILL_DIR}/scripts/run.sh" --chave "CHAVE" --nome "NOME" --cidade "CIDADE" \
+  [--valor 150.00] [--txid PEDIDO123] [--descricao "texto"] [--terminal escuro] --saida pix.png
 ```
 
-- Salve a imagem onde o usuário consiga abrir: no Claude web, em `/mnt/user-data/outputs/pix.png`; no Claude Code, no diretório atual.
-- A saída padrão (stdout) é o código copia e cola. Ele sai mesmo se a geração da imagem falhar.
+Escolha a saída conforme onde você está rodando:
+
+- **Claude web ou app desktop (chat)**, onde existe `/mnt/user-data/outputs`: use `--saida /mnt/user-data/outputs/pix.png` e não use `--terminal`.
+- **Claude Code (terminal)**: use `--terminal escuro` e `--saida pix.png` (diretório atual). Se o usuário disser que o terminal tem fundo claro, use `--terminal claro`.
+
+Saída do script:
+
+- Primeira linha do stdout: o código copia e cola. Ele sai mesmo se a geração da imagem falhar.
+- Com `--terminal`, depois de uma linha em branco vem o QR desenhado com os caracteres `█ ▀ ▄` e espaço.
 - Se der erro, o script imprime `ERRO: ...` e sai com código diferente de 0. Explique o erro ao usuário e peça o dado corrigido.
 
 O script já trata sozinho: remoção de acentos, limite de 25 caracteres no nome e 15 na cidade, formato do valor (aceita `150`, `150,00`, `1.234,56`, `R$ 10`), limpeza do CPF/CNPJ formatado, validação dos dígitos de CPF/CNPJ e cálculo do CRC16.
@@ -49,7 +50,9 @@ O script já trata sozinho: remoção de acentos, limite de 25 caracteres no nom
 
 Entregue ao usuário:
 
-1. A imagem `pix.png`
+1. O QR code:
+   - **Claude web ou app desktop**: a imagem `pix.png`.
+   - **Claude Code**: o QR em texto, num bloco ` ```text `, copiado **exatamente** como o script imprimiu, linha por linha, sem tirar nem acrescentar nenhum caractere ou espaço. Qualquer diferença pode deixar o QR ilegível. Depois do bloco, informe o caminho do `pix.png` e diga que, se o celular não ler o QR do terminal, dá para abrir a imagem (no macOS: `open pix.png`).
 2. O código copia e cola, num bloco de código para facilitar copiar
 3. Um resumo curto: recebedor, chave e valor (ou "valor livre")
 

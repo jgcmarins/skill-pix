@@ -45,22 +45,26 @@ claude plugin install pix@skill-pix
 
 Depois, numa sessão, digite `/pix` ou peça "gera um QR code pix".
 
+## Onde o QR aparece
+
+- **Claude web e app desktop**: o Claude devolve a imagem PNG do QR code.
+- **Claude Code (terminal)**: o QR aparece desenhado no próprio terminal, com caracteres de bloco (como o `expo start` faz), e a imagem PNG fica salva no diretório atual.
+
 ## Uso direto do script
 
-O script também funciona sozinho:
+O script também funciona sozinho. O `run.sh` instala a biblioteca `qrcode` na primeira vez, num ambiente isolado em `~/.cache/skill-pix/venv`:
 
 ```bash
-pip install "qrcode[pil]==8.2"
-python3 skills/pix/scripts/pix.py --chave "email@exemplo.com" --nome "Maria Silva" \
-  --cidade "Sao Paulo" --valor 25.00 --saida pix.png
+bash skills/pix/scripts/run.sh --chave "email@exemplo.com" --nome "Maria Silva" \
+  --cidade "Sao Paulo" --valor 25.00 --terminal escuro --saida pix.png
 ```
 
-O código copia e cola sai no terminal e a imagem é salva em `pix.png`.
+O código copia e cola sai no terminal, seguido do QR em texto (`--terminal escuro` ou `--terminal claro`, conforme o fundo do seu terminal). A imagem é salva em `pix.png`.
 
 ## Dados e privacidade
 
 - Tudo roda localmente, no ambiente de execução de código do Claude ou na sua máquina. O script **não envia nenhum dado** para servidor algum: não chama API, não tem telemetria e não guarda nada além da imagem que você pedir.
-- A única conexão de rede é a instalação da biblioteca [`qrcode`](https://pypi.org/project/qrcode/) (versão fixa `8.2`) pelo PyPI, e só quando ela ainda não está instalada.
+- A única conexão de rede é a instalação da biblioteca [`qrcode`](https://pypi.org/project/qrcode/) (versão fixa `8.2`) pelo PyPI, e só quando ela ainda não está instalada. Ela é instalada num ambiente isolado (`~/.cache/skill-pix/venv`), sem alterar o Python do sistema.
 - Os dados que você informa (chave, nome, cidade, valor) ficam na conversa com o Claude, como qualquer mensagem.
 
 Detalhes em [PRIVACY.md](PRIVACY.md).
